@@ -1,0 +1,81 @@
+CREATE PROCEDURE HISTDBA.dynamic_comparison_date_adjustment (
+    IN source_table NVARCHAR(500),
+    IN target_table NVARCHAR(500),
+    IN SELECT_COLUMNS NVARCHAR(100),
+    IN WHERE_COLUMNS NVARCHAR(2000),
+    IN expected_row_count INT
+)
+LANGUAGE SQLSCRIPT
+SQL SECURITY INVOKER
+AS
+BEGIN
+    /*
+		I used the store procedure over the weekeed to implement a front-end application (flask)
+        replacing the intermediate load to excel and holding the results in memory and go in to the
+        validarion process.
+	    4/22/2026 I noticed today there were 10 outstanding rows found in table ehrp.ps_gvt_par_remarks
+        I ran the program and it didnt work , when i fetch the copy of the stored procedues it didnt have the latest 
+        version. So today I making this firt version 1.0 with dynamic adjustment of dates.
+        I will replace the new version and making copy of what's in the catalog and move also develpment.
+        Having both same copy.
+
+		new revision 4/22/2026 8:39 PM
+		Method	Speed	Flexibility	Best Use Case
+		NOT EXISTS	🟡 متوسط	🟢 High	Complex logic
+		LEFT JOIN IS NULL	🟢 Fast	🟡 Medium	Large datasets
+		MINUS	🔥 Fastest	🔴 Low	Full-row comparison
+	*/
+	
+    DECLARE start_date DATE;
+    DECLARE end_date DATE;
+
+    DECLARE dynamic_query NVARCHAR(5000);
+    DECLARE count_query NVARCHAR(5000);
+    DECLARE row_count INT DEFAULT 0;
+    DECLARE attempt INT DEFAULT 1;
+    DECLARE max_attempts INT DEFAULT 25;
+
+    start_date := ADD_YEARS(CURRENT_DATE, -2);  
+    end_date := CURRENT_DATE;                   
+
+    WHILE :row_count < :expected_row_count AND :attempt < :max_attempts DO
+
+        IF LOWER(:source_table) = 'ehrp.ps_personal_data' OR 
+           LOWER(:source_table) = 'v_ehrp.v_ps_personal_data' THEN
+
+            dynamic_query :=
+    			'SELECT ' || SELECT_COLUMNS ||
+    			' FROM ' || source_table || ' a ' ||
+    			'MINUS ' ||
+    			'SELECT ' || SELECT_COLUMNS ||
+    			' FROM ' || target_table || ' b ';
+        ELSE
+		  dynamic_query :=
+                'SELECT ' || SELECT_COLUMNS || ' FROM ' || source_table || ' a ' ||
+                'WHERE a.effdt BETWEEN ''' || TO_NVARCHAR(start_date) || ''' AND ''' || TO_NVARCHAR(end_date) || ''' ' ||
+                'MINUS ' ||
+                'SELECT ' || SELECT_COLUMNS || ' FROM ' || target_table || ' b '
+                'WHERE b.effdt BETWEEN ''' || TO_NVARCHAR(start_date) || ''' AND ''' || TO_NVARCHAR(end_date) || '''';
+        END IF;
+
+       count_query := 'SELECT COUNT(*) FROM (' || :dynamic_query || ') t';
+
+        EXECUTE IMMEDIATE :count_query INTO row_count;
+
+        -- Debug output
+       -- SELECT :dynamic_query AS QUERY, :row_count AS ROWS FROM DUMMY;
+
+        IF :row_count < :expected_row_count THEN
+            IF MOD(:attempt, 2) = 0 THEN
+                end_date := ADD_YEARS(:end_date, 2);
+            ELSE
+                start_date := ADD_YEARS(:start_date, -2);
+            END IF;
+        END IF;
+
+        attempt := :attempt + 1;
+
+    END WHILE;
+
+    EXECUTE IMMEDIATE dynamic_query;
+END;
