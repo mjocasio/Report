@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+
+{% block title %}Compare Oracle vs HANA{% endblock %}
+
+{% block content %}
+
+<h3 class="mb-3">Oracle vs SAP HANA Schema Comparison</h3>
+
+<!-- ================= FORM ================= -->
+<form method="POST" class="panel mb-3"
+      action="{{ url_for('compare') }}">
+
+    <div class="form-group">
+        <label>Schema</label>
+        <input name="schema"
+               class="form-control"
+               value="{{ schema or '' }}"
+               required>
+    </div>
+
+    <div class="form-group">
+        <label>Table</label>
+        <input name="table"
+               class="form-control"
+               value="{{ table or '' }}"
+               required>
+    </div>
+
+    <button class="btn btn-primary" name="action" value="compare">
+        Compare
+    </button>
+
+    <button class="btn btn-success" name="action" value="apply_fix">
+        Apply Fix
+    </button>
+
+    <button class="btn btn-secondary" name="action" value="export">
+        Export CSV
+    </button>
+
+</form>
+
+<!-- ================= MESSAGE ================= -->
+{% if message %}
+<div class="alert alert-info">{{ message }}</div>
+{% endif %}
+
+<!-- ================= RESULTS ================= -->
+{% if results %}
+
+{% for r in results %}
+
+<hr>
+
+<h5>
+    {{ r.schema }}.{{ r.table }}
+    <small class="text-muted">
+        (Oracle: {{ r.oracle_count or 0 }} | HANA: {{ r.hana_count or 0 }})
+    </small>
+</h5>
+
+<div class="row">
+
+    <!-- Missing -->
+    <div class="col-md-4">
+        <div class="panel panel-mono">
+            <div class="panel-title text-danger">Missing in HANA</div>
+            <ul>
+                {% for col in r.diff.missing_in_hana %}
+                    <li>{{ col }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Extra -->
+    <div class="col-md-4">
+        <div class="panel panel-mono">
+            <div class="panel-title text-warning">Extra in HANA</div>
+            <ul>
+                {% for col in r.diff.extra_in_hana %}
+                    <li>{{ col }}</li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Type mismatch -->
+    <div class="col-md-4">
+        <div class="panel panel-mono">
+            <div class="panel-title text-info">Type Mismatch</div>
+            <ul>
+                {% for item in r.diff.type_mismatch %}
+                    <li>
+                        {{ item.column }}:
+                        {{ item.oracle }} → {{ item.hana }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+</div>
+
+<!-- FIX SQL -->
+{% if r.fix_sql %}
+<div class="panel panel-mono mt-3">
+    <div class="panel-title">Fix SQL</div>
+    <pre>
+{% for stmt in r.fix_sql %}
+{{ stmt }}
+{% endfor %}
+    </pre>
+</div>
+{% endif %}
+
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}

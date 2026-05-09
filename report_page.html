@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Report Page
+{% endblock %}
+
+{% block content %}
+
+<h5 class="mb-3">
+    Report Generated: {{ now.strftime('%Y-%m-%d %H:%M:%S') }}
+</h5>
+
+<div class="panel">
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>OWNER</th>
+            <th>TABLE_NAME</th>
+            <th>HANA</th>
+            <th>ORACLE</th>
+            <th>DIFFERENCE</th>
+            <th>SNAPSHOT</th>
+            <th>ACTION</th>
+        </tr>
+    </thead>
+
+    <tbody>
+        {% for row in rows %}
+        <tr>
+            <td>{{ row.OWNER }}</td>
+            <td>{{ row.TABLE_NAME }}</td>
+            <td>{{ row.HANA_ROWCOUNT }}</td>
+            <td>{{ row.ORACLE_ROWCOUNT }}</td>
+
+            <!-- DIFFERENCE -->
+            <td class="{% if row.DIFFERENCE is not none and row.DIFFERENCE != 0 %}cell-alert{% endif %}">
+                {{ row.DIFFERENCE if row.DIFFERENCE is not none else 'N/A' }}
+            </td>
+
+            <!-- SNAPSHOT -->
+            <td>{{ row.SNAPSHOT_TAKEN_DT }}</td>
+
+            <!-- ACTION -->
+            <td>
+                {% if row.OUTSTANDING_ROWS %}
+                    <select class="form-control form-control-sm">
+                        {% for r in row.OUTSTANDING_ROWS %}
+                            <option>
+                                {% for val in r.values() %}
+                                    {{ val }} |
+                                {% endfor %}
+                            </option>
+                        {% endfor %}
+                    </select>
+
+                {% elif row.DIFFERENCE != 0 and row.DIFFERENCE is not none %}
+                    <form method="POST" action="{{ url_for('reconcile') }}">
+                        <input type="hidden" name="owner" value="{{ row.OWNER }}">
+                        <input type="hidden" name="table_name" value="{{ row.TABLE_NAME }}">
+                        <input type="hidden" name="differences" value="{{ row.DIFFERENCE }}">
+                        <button class="btn btn-warning btn-sm">Reconcile</button>
+                    </form>
+
+                {% else %}
+                    <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+{% endblock %}

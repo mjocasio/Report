@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Report{% endblock %}
+
+{% block content %}
+
+<h5>Report Generated: {{ now.strftime('%Y-%m-%d %H:%M:%S') }}</h5>
+
+<table class="table table-hover">
+    <thead>
+        <tr>
+            <th>OWNER</th>
+            <th>TABLE</th>
+            <th>HANA</th>
+            <th>ORACLE</th>
+            <th>DIFF</th>
+            <th>SNAPSHOT</th>
+            <th>ACTION</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    {% for row in rows %}
+        <tr>
+            <td>{{ row.OWNER }}</td>
+            <td>{{ row.TABLE_NAME }}</td>
+            <td>{{ row.HANA_ROWCOUNT }}</td>
+            <td>{{ row.ORACLE_ROWCOUNT }}</td>
+
+            <td class="{% if row.DIFFERENCE and row.DIFFERENCE != 0 %}text-danger{% endif %}">
+                {{ row.DIFFERENCE if row.DIFFERENCE else 'N/A' }}
+            </td>
+
+            <td>{{ row.SNAPSHOT_TAKEN_DT }}</td>
+
+            <td>
+                {% if row.DIFFERENCE and row.DIFFERENCE != 0 %}
+                <form method="POST" action="{{ url_for('reconcile') }}">
+                    <input type="hidden" name="owner" value="{{ row.OWNER }}">
+                    <input type="hidden" name="table_name" value="{{ row.TABLE_NAME }}">
+                    <button class="btn btn-warning btn-sm">Reconcile</button>
+                </form>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+            </td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% endblock %}

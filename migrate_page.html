@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Migration{% endblock %}
+
+{% block content %}
+
+<h3 class="mb-3">Oracle → SAP HANA Migration</h3>
+
+<!-- ================= FORM ================= -->
+<form method="POST" class="panel mb-3">
+
+    <!-- ================= SCHEMA ================= -->
+    <div class="form-group">
+        <!-- label>Source Schema </label-->
+        <select name="schema"
+                class="form-control"
+                onchange="this.form.submit()">
+
+            <option value="">Select Schema</option>
+
+            <option value="EHRP"
+                {% if selected_schema == 'EHRP' %}selected{% endif %}>
+                EHRP
+            </option>
+
+            <option value="AMSUSR"
+                {% if selected_schema == 'AMSUSR' %}selected{% endif %}>
+                AMSUSR
+            </option>
+
+        </select>
+    </div>
+
+    <!-- ================= TABLE ================= -->
+    {% if tables %}
+
+    <div class="form-group">
+        <label>Table</label>
+
+        <select name="table" class="form-control">
+            {% for t in tables %}
+                <option value="{{ t[0] }}"
+                    {% if selected_table == t[0] %}selected{% endif %}>
+                    {{ t[0] }}
+                </option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <!-- ================= TARGET SCHEMA ================= -->
+    <div class="form-group">
+        <label>Target Schema (SAP HANA)</label>
+        <input name="target_schema"
+               class="form-control"
+               value="{{ selected_schema }}"
+               required>
+        <small class="text-muted">
+            (Same schema recommended for 1:1 replication)
+        </small>
+    </div>
+
+    <!-- ================= ACTION BUTTONS ================= -->
+    <div class="mt-3">
+
+        <button class="btn btn-primary"
+                name="action"
+                value="preview">
+            Preview SQL
+        </button>
+
+        <button class="btn btn-success"
+                name="action"
+                value="migrate">
+            Migrate to HANA
+        </button>
+
+        <button class="btn btn-info"
+                name="action"
+                value="compare">
+            Compare Oracle vs HANA
+        </button>
+
+    </div>
+
+    {% endif %}
+
+</form>
+
+<!-- ================= MESSAGE ================= -->
+{% if message %}
+<div class="alert alert-info mt-2">
+    {{ message }}
+</div>
+{% endif %}
+
+<!-- ================= RESULTS ================= -->
+{% if metadata %}
+
+<div class="row mt-3">
+
+    <!-- ================= ORACLE METADATA ================= -->
+    <div class="col-md-6">
+
+        <div class="panel panel-mono">
+
+            <div class="panel-title">
+                Oracle Metadata
+            </div>
+
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Column</th>
+                        <th>Type</th>
+                        <th>Length</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for col in metadata %}
+                    <tr>
+                        <td>{{ col[0] }}</td>
+                        <td>{{ col[1] }}</td>
+                        <td>{{ col[2] }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <!-- ================= GENERATED SQL ================= -->
+    <div class="col-md-6">
+
+        <div class="panel panel-mono">
+
+            <div class="panel-title">
+                Generated SAP HANA SQL
+            </div>
+
+            <a href="https://help.sap.com/docs/HANA_SMART_DATA_INTEGRATION/71c4a6e6b4dc4a5ab3e17bb1d7e98104/13d9b4114c4c4f058d95ac4902240dd2.html"
+               target="_blank"
+               class="sap-doc-link">
+                📘 SAP HANA Data Types Reference
+            </a>
+
+            <pre class="sql-box">{{ create_sql }}</pre>
+
+        </div>
+
+    </div>
+
+</div>
+
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block title %}
+Upload Page
+{% endblock %}
+
+{% block content %}
+
+<br>
+
+<form method="POST" action="/upload" enctype="multipart/form-data" class="panel">
+
+    <div style="margin-bottom:15px;">
+        <label><b>Structure File (Schema / DDL)</b></label><br>
+        <input type="file" name="structure_file" accept=".xls,.xlsx,.csv">
+    </div>
+
+    <div style="margin-bottom:15px;">
+        <label><b>Data File (Load Data)</b></label><br>
+        <input type="file" name="data_file" accept=".xls,.xlsx,.csv,.txt">
+    </div>
+
+    <button class="btn btn-primary btn-sm" type="submit" name="action" value="preview">
+        🔍 Preview SQL
+    </button>
+
+    <button class="btn btn-success btn-sm" type="submit" name="action" value="execute">
+        🚀 Execute Script
+    </button>
+
+    <button class="btn btn-warning btn-sm" type="submit" name="action" value="load"
+    {% if not pipeline_ready %}disabled{% endif %}>
+       📥 Load Data
+    </button>
+</form>
+
+{% if message %}
+<div class="panel">
+    {{ message }}
+</div>
+{% endif %}
+
+{% if table_data %}
+
+<div class="split-layout">
+
+<div class="split-left">
+
+    <!-- ===================================================== -->
+    <!-- LEFT SIDE: TABLE COMPARISON -->
+    <!-- ===================================================== -->
+    <div class="panel panel-mono">
+
+        <div class="table-responsive">
+
+            <table class="table table-sm w-100 no-wrap">
+                <thead>
+                    <tr>
+                        {% for col in columns %}
+                            <th>{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for row in table_data %}
+                    <tr>
+                        <td>{{ row.column }}</td>
+                        <td>{{ row.source_type }}</td>
+                        <td>
+                            {% if row.hana_type %}
+                             {{ row.hana_type }} (Db)
+                            {% else %}
+                                {{ row.source_type }}
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+
+    </div>
+
+    <!-- ===================================================== -->
+    <!-- RIGHT SIDE: SQL OR EXECUTION RESULTS -->
+    <!-- ===================================================== -->
+    <div class="split-right">
+
+        <div class="panel panel-mono sql-panel">
+
+            <div class="panel-title">
+                {% if mode == "execute" %}
+                    Execution Results
+                {% else %}
+                    Generated SQL
+                {% endif %}
+            </div>
+
+            <!-- ================= EXECUTE MODE ================= -->
+            {% if mode == "execute" %}
+
+                <table class="table table-sm w-100">
+                    <thead>
+                        <tr>
+                            <th>Statement</th>
+                            <th>Status</th>
+                            <th>Message</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for row in execution_report %}
+                        <tr>
+                            <td style="font-size:11px; word-break: break-word;">
+                                {{ row.statement }}
+                            </td>
+
+                            <td>
+                                {% if row.status == "SUCCESS" %}
+                                    <span style="color:green;">{{ row.status }}</span>
+                                {% elif row.status == "SKIPPED" %}
+                                    <span style="color:orange;">{{ row.status }}</span>
+                                {% else %}
+                                    <span style="color:red;">{{ row.status }}</span>
+                                {% endif %}
+                            </td>
+
+                            <td>{{ row.message }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+            <!-- ================= PREVIEW MODE ================= -->
+            {% else %}
+                <a href="https://help.sap.com/docs/HANA_SMART_DATA_INTEGRATION/71c4a6e6b4dc4a5ab3e17bb1d7e98104/13d9b4114c4c4f058d95ac4902240dd2.html"
+                    target="_blank" class="sap-doc-link">
+                    📘 SAP HANA Data Type Documentation
+                </a>
+                <pre style="white-space: pre-wrap; word-break: break-word;">
+                {{ final_sql }}
+                </pre>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+</div>
+</div>
+
+{% endif %}
+
+{% endblock %}
